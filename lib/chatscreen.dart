@@ -1,22 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/chatmessage.dart';
+import 'package:flutter_chat/models/activity.dart';
+import 'package:flutter_chat/models/from.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ChatScreen extends StatefulWidget {
-  final int userId;
+  final String streamUrl;
+  final String token;
 
-  ChatScreen({Key key, @required this.userId}) : super(key: key);
+  ChatScreen({Key key, @required this.streamUrl, @required this.token})
+      : super(key: key);
 
   @override
   State createState() => new ChatScreenState();
 }
 
 class ChatScreenState extends State<ChatScreen> {
+  WebSocketChannel channel;
   final TextEditingController _chatController = new TextEditingController();
   final List<ChatMessage> _messages = <ChatMessage>[];
+
+  @override
+  void initState() {
+    super.initState();
+    channel = IOWebSocketChannel.connect(
+        widget.streamUrl.replaceAll("https", "wws"),
+        headers: {"Upgrade": "websocket", "Connection": "upgrade"});
+    channel.stream.listen((data) => setState(() {
+          print("ReceivedData: " + data);
+          //_messages.insert(0, new ChatMessage(Sender.Bot, text: data));
+        }));
+  }
+
+  @override
+  void dispose() {
+    channel.sink.close();
+    super.dispose();
+  }
+
+  Future<int> sendMessage(String message) async {
+    var headers = {
+      "Authorization": "Bearer " + widget.token,
+      "Content-Type": "application/json"
+    };
+    var body = jsonEncode(new Activity("message", new From("user"), message));
+
+    final response =
+        await http.post(widget.streamUrl, headers: headers, body: body);
+
+    if (response.statusCode == 200) {
+      return int.parse(json.decode(response.body)["id"]);
+    } else {
+      print('Failed to load DirectLine post');
+      return null;
+    }
+  }
 
   void _handleSubmit(String text) {
     _chatController.clear();
     ChatMessage message = new ChatMessage(Sender.Client, text: text);
+    sendMessage(message.text);
 
     setState(() {
       _messages.insert(0, message);
