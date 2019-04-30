@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat/chatmessage.dart';
 
 class ChatScreen extends StatefulWidget {
+  final int userId;
+
+  ChatScreen({Key key, @required this.userId}) : super(key: key);
+
   @override
   State createState() => new ChatScreenState();
 }
