@@ -10,8 +10,13 @@ import 'dart:convert';
 class ChatScreen extends StatefulWidget {
   final String streamUrl;
   final String token;
+  final String conversationId;
 
-  ChatScreen({Key key, @required this.streamUrl, @required this.token})
+  ChatScreen(
+      {Key key,
+      @required this.streamUrl,
+      @required this.token,
+      @required this.conversationId})
       : super(key: key);
 
   @override
@@ -27,7 +32,7 @@ class ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     channel = IOWebSocketChannel.connect(
-        widget.streamUrl.replaceAll("https", "wws"),
+        widget.streamUrl, //.replaceAll("https", "wws"),
         headers: {"Upgrade": "websocket", "Connection": "upgrade"});
     channel.stream.listen((data) => setState(() {
           print("ReceivedData: " + data);
@@ -41,32 +46,40 @@ class ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<int> sendMessage(String message) async {
+  Future<bool> sendMessage(String message) async {
+    var url =
+        "https://directline.botframework.com/v3/directline/conversations/${widget.conversationId}/activities";
     var headers = {
       "Authorization": "Bearer " + widget.token,
       "Content-Type": "application/json"
     };
-    var body = jsonEncode(new Activity("message", new From("user"), message));
+    var body = jsonEncode(new Activity("message", new From("user1"), message));
 
-    final response =
-        await http.post(widget.streamUrl, headers: headers, body: body);
+    print("url: " + url);
+    print("token: " + widget.token);
+    print("jsonBody: " + body);
+
+    final response = await http.post(url, headers: headers, body: body);
+
+    print("message sent");
 
     if (response.statusCode == 200) {
-      return int.parse(json.decode(response.body)["id"]);
+      print(response.body);
+      return true;
     } else {
-      print('Failed to load DirectLine post');
-      return null;
+      print('Failed to Send message post');
+      print(response.statusCode);
+      return false;
     }
   }
 
   void _handleSubmit(String text) {
     _chatController.clear();
     ChatMessage message = new ChatMessage(Sender.Client, text: text);
-    sendMessage(message.text);
-
     setState(() {
       _messages.insert(0, message);
     });
+    sendMessage(message.text).then((id) {});
   }
 
   Widget _chatEnvironment() {

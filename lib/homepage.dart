@@ -14,7 +14,9 @@ class Homepage extends StatelessWidget {
         "https://directline.botframework.com/v3/directline/conversations",
         headers: headers);
 
-    if (response.statusCode == 200) {
+    print(response.statusCode);
+
+    if (response.statusCode == 201) {
       return BotConversation.fromJson(json.decode(response.body));
     } else {
       throw Exception('Failed to load Conversation post');
@@ -33,8 +35,10 @@ class Homepage extends StatelessWidget {
             builder: (context, conversation) {
               if (conversation.hasData) {
                 return new ChatScreen(
-                    streamUrl: conversation.data.streamUrl,
-                    token: conversation.data.token);
+                  streamUrl: conversation.data.streamUrl,
+                  token: conversation.data.token,
+                  conversationId: conversation.data.conversationId,
+                );
               } else if (conversation.hasError) {
                 return Text("${conversation.error}");
               }
