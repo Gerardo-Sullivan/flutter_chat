@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/chatmessage.dart';
-import 'package:flutter_chat/models/activity.dart';
-import 'package:flutter_chat/models/from.dart';
+import 'package:flutter_chat/models/botservice/activity.dart';
+import 'package:flutter_chat/models/botservice/channel_account.dart';
+import 'package:flutter_chat/models/activity_types.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
@@ -11,12 +12,17 @@ class ChatScreen extends StatefulWidget {
   final String streamUrl;
   final String token;
   final String conversationId;
+  final String userId;
+  final String userName;
+  final String userRole = "user";
 
   ChatScreen(
       {Key key,
       @required this.streamUrl,
       @required this.token,
-      @required this.conversationId})
+      @required this.conversationId,
+      @required this.userId,
+      @required this.userName})
       : super(key: key);
 
   @override
@@ -25,19 +31,25 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   WebSocketChannel channel;
+  String conversationUrl;
   final TextEditingController _chatController = new TextEditingController();
   final List<ChatMessage> _messages = <ChatMessage>[];
 
   @override
   void initState() {
     super.initState();
+    conversationUrl =
+        "https://directline.botframework.com/v3/directline/conversations/${widget.conversationId}/activities";
+
     channel = IOWebSocketChannel.connect(
         widget.streamUrl, //.replaceAll("https", "wws"),
         headers: {"Upgrade": "websocket", "Connection": "upgrade"});
     channel.stream.listen((data) => setState(() {
-          print("ReceivedData: " + data);
+          print(data);
           //_messages.insert(0, new ChatMessage(Sender.Bot, text: data));
         }));
+
+    sendConversationUpdate();
   }
 
   @override
@@ -46,22 +58,48 @@ class ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<bool> sendMessage(String message) async {
-    var url =
-        "https://directline.botframework.com/v3/directline/conversations/${widget.conversationId}/activities";
+  Future<bool> sendConversationUpdate() async {
     var headers = {
       "Authorization": "Bearer " + widget.token,
       "Content-Type": "application/json"
     };
-    var body = jsonEncode(new Activity("message", new From("user1"), message));
+    var body = jsonEncode(new Activity(ActivityTypes.ConversationUpdate,
+        new ChannelAccount(widget.userId, widget.userName, widget.userRole)));
 
-    print("url: " + url);
+    print("url: " + conversationUrl);
     print("token: " + widget.token);
     print("jsonBody: " + body);
 
-    final response = await http.post(url, headers: headers, body: body);
+    final response =
+        await http.post(conversationUrl, headers: headers, body: "");
+
+    print("conversationUpdate sent");
+
+    if (response.statusCode == 200) {
+      print(response.body);
+      return true;
+    } else {
+      print('Failed to Send message post');
+      print(response.statusCode);
+      print(response.body);
+      return false;
+    }
+  }
+
+  Future<bool> sendMessage(String message) async {
+    var headers = {
+      "Authorization": "Bearer " + widget.token,
+      "Content-Type": "application/json"
+    };
+    var body = jsonEncode(new Activity(ActivityTypes.Message,
+        new ChannelAccount(widget.userId, widget.userName, widget.userRole),
+        text: message));
+
+    final response =
+        await http.post(conversationUrl, headers: headers, body: body);
 
     print("message sent");
+    print("Body: " + body);
 
     if (response.statusCode == 200) {
       print(response.body);
