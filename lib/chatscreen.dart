@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat/chatmessage.dart';
 import 'package:flutter_chat/models/botservice/activity.dart';
 import 'package:flutter_chat/models/botservice/channel_account.dart';
-import 'package:flutter_chat/models/activity_types.dart';
+import 'package:flutter_chat/models/botservice/activity_types.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
